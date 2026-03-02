@@ -1,4 +1,5 @@
 #include "mock_orch_test.h"
+#include "mock_table.h"
 
 using namespace std;
 
@@ -129,6 +130,16 @@ void MockOrchTest::SetUp()
     gDirectory.set(gPortsOrch);
     ut_orch_list.push_back((Orch **)&gPortsOrch);
     global_orch_list.insert((Orch **)&gPortsOrch);
+
+    // Pre-populate STATE_DB so PortsOrch does not defer admin up waiting for NPU_SI_SETTINGS_NOTIFIED
+    {
+        Table statePortTable(m_state_db.get(), STATE_PORT_TABLE_NAME);
+        auto ports = ut_helper::getInitialSaiPorts();
+        for (const auto &it : ports)
+        {
+            statePortTable.set(it.first, {{"NPU_SI_SETTINGS_SYNC_STATUS", "NPU_SI_SETTINGS_NOTIFIED"}});
+        }
+    }
 
     const int fgnhgorch_pri = 15;
 

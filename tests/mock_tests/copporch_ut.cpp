@@ -266,6 +266,15 @@ namespace copporch_test
                 portTable.set(cit.first, cit.second);
             }
 
+            // Pre-populate STATE_DB so PortsOrch does not defer admin up waiting for NPU_SI_SETTINGS_NOTIFIED
+            {
+                Table statePortTable(this->stateDb.get(), STATE_PORT_TABLE_NAME);
+                for (const auto &cit : ports)
+                {
+                    statePortTable.set(cit.first, {{"NPU_SI_SETTINGS_SYNC_STATUS", "NPU_SI_SETTINGS_NOTIFIED"}});
+                }
+            }
+
             // Set PortConfigDone
             portTable.set("PortConfigDone", { { "count", to_string(ports.size()) } });
             gPortsOrch->addExistingData(&portTable);
