@@ -115,10 +115,13 @@ namespace portphyattr_test
 
             // Initialize ports using SAI default ports
             Table portTable(m_app_db.get(), APP_PORT_TABLE_NAME);
+            Table statePortTable(m_state_db.get(), STATE_PORT_TABLE_NAME);
             auto ports = ut_helper::getInitialSaiPorts();
             for (const auto &it : ports)
             {
                 portTable.set(it.first, it.second);
+                // Populate STATE_DB so PortsOrch does not defer admin up waiting for NPU_SI_SETTINGS_NOTIFIED
+                statePortTable.set(it.first, {{"NPU_SI_SETTINGS_SYNC_STATUS", "NPU_SI_SETTINGS_NOTIFIED"}});
             }
 
             // Set PortConfigDone

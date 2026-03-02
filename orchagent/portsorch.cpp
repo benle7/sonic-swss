@@ -90,6 +90,9 @@ extern bool gMultiAsicVoq;
 #define PG_WATERMARK_STAT_FLEX_COUNTER_POLLING_INTERVAL_MS   60000
 #define PG_DROP_STAT_FLEX_COUNTER_POLLING_INTERVAL_MS   10000
 
+#define NPU_SI_SETTINGS_SYNC_STATUS_KEY   "NPU_SI_SETTINGS_SYNC_STATUS"
+#define NPU_SI_SETTINGS_NOTIFIED_VALUE      "NPU_SI_SETTINGS_NOTIFIED"
+
 // types --------------------------------------------------------------------------------------------------------------
 
 struct PortAttrValue
@@ -5387,6 +5390,34 @@ void PortsOrch::doPortTask(Consumer &consumer)
                 {
                     if (p.m_admin_state_up != pCfg.admin_status.value)
                     {
+                        /*
+                         * When bringing admin UP with no serdes attr in APPL_DB, wait for xcvrd
+                         * to notify SI settings (NPU_SI_SETTINGS_NOTIFIED) so serdes are applied
+                         * before enabling TX. Avoids bad host TX during swss restart.
+                         */
+                        if (pCfg.admin_status.value && serdes_attr.empty())
+                        {
+                            vector<FieldValueTuple> tuples;
+                            bool siExist = m_portStateTable.get(p.m_alias, tuples);
+                            string npuSiStatus;
+                            if (siExist)
+                            {
+                                for (const auto &fv : tuples)
+                                {
+                                    if (fvField(fv) == NPU_SI_SETTINGS_SYNC_STATUS_KEY)
+                                    {
+                                        npuSiStatus = fvValue(fv);
+                                        break;
+                                    }
+                                }
+                            }
+                            if (npuSiStatus != NPU_SI_SETTINGS_NOTIFIED_VALUE)
+                            {
+                                m_pendingPortSet.emplace(pCfg.key);
+                                it++;
+                                continue;
+                            }
+                        }
                         if (!setPortAdminStatus(p, pCfg.admin_status.value))
                         {
                             SWSS_LOG_ERROR(

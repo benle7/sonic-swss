@@ -559,6 +559,13 @@ namespace portsorch_test
 
             gPortsOrch = new PortsOrch(m_app_db.get(), m_state_db.get(), ports_tables, m_chassis_app_db.get());
 
+            // Populate STATE_DB so PortsOrch does not defer admin up waiting for NPU_SI_SETTINGS_NOTIFIED
+            Table statePortTable(m_state_db.get(), STATE_PORT_TABLE_NAME);
+            for (const auto &it : defaultPortList)
+            {
+                statePortTable.set(it.first, {{"NPU_SI_SETTINGS_SYNC_STATUS", "NPU_SI_SETTINGS_NOTIFIED"}});
+            }
+
             vector<string> flex_counter_tables = {
                 CFG_FLEX_COUNTER_TABLE_NAME
             };
@@ -1030,6 +1037,15 @@ namespace portsorch_test
 
         // Set PortConfigDone
         portTable.set("PortConfigDone", { { "count", std::to_string(ports.size()) } });
+
+        // Set NPU_SI_SETTINGS_SYNC_STATUS to NOTIFIED for each port so PortsOrch does not defer admin up
+        Table statePortTable(m_state_db.get(), STATE_PORT_TABLE_NAME);
+        for (std::uint32_t idx1 = 0; idx1 < ports.size() * 4; idx1 += 4)
+        {
+            std::stringstream key;
+            key << FRONT_PANEL_PORT_PREFIX << idx1;
+            statePortTable.set(key.str(), {{"NPU_SI_SETTINGS_SYNC_STATUS", "NPU_SI_SETTINGS_NOTIFIED"}});
+        }
 
         // Refill consumer
         gPortsOrch->addExistingData(&portTable);

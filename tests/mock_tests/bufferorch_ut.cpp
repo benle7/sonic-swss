@@ -366,14 +366,17 @@ namespace bufferorch_test
             gBufferOrch = new BufferOrch(m_app_db.get(), m_config_db.get(), m_state_db.get(), buffer_tables);
 
             Table portTable = Table(m_app_db.get(), APP_PORT_TABLE_NAME);
+            Table statePortTable(m_state_db.get(), STATE_PORT_TABLE_NAME);
 
             // Get SAI default ports to populate DB
             auto ports = ut_helper::getInitialSaiPorts();
 
             // Populate pot table with SAI ports
+            // Populate STATE_DB so PortsOrch does not defer admin up waiting for NPU_SI_SETTINGS_NOTIFIED
             for (const auto &it : ports)
             {
                 portTable.set(it.first, it.second);
+                statePortTable.set(it.first, {{"NPU_SI_SETTINGS_SYNC_STATUS", "NPU_SI_SETTINGS_NOTIFIED"}});
             }
 
             // Set PortConfigDone
