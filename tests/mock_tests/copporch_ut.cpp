@@ -256,14 +256,17 @@ namespace copporch_test
         void initPorts()
         {
             auto portTable = Table(this->appDb.get(), APP_PORT_TABLE_NAME);
+            Table statePortTable(this->stateDb.get(), STATE_PORT_TABLE_NAME);
 
             // Get SAI default ports to populate DB
             auto ports = ut_helper::getInitialSaiPorts();
 
             // Populate port table with SAI ports
+            // Populate STATE_DB so PortsOrch does not defer admin up waiting for NPU_SI_SETTINGS_NOTIFIED
             for (const auto &cit : ports)
             {
                 portTable.set(cit.first, cit.second);
+                statePortTable.set(cit.first, {{"NPU_SI_SETTINGS_SYNC_STATUS", "NPU_SI_SETTINGS_NOTIFIED"}});
             }
 
             // Set PortConfigDone
