@@ -22,6 +22,8 @@
 #include <tuple>
 #include <sstream>
 #include <unordered_set>
+#include <chrono>
+#include <thread>
 
 #include <netinet/if_ether.h>
 #include "net/if.h"
@@ -5282,6 +5284,13 @@ void PortsOrch::doPortTask(Consumer &consumer)
 
                                 p.m_admin_state_up = false;
                                 m_portList[p.m_alias] = p;
+                                /* Allow module time to go through DataPathTxTurnOff (host TX off)
+                                 * before applying serdes and bringing port up; avoids CDR LoL
+                                 * when automatic toggle is too fast (cf. manual toggle recovery). */
+                                constexpr unsigned int SERDES_ADMIN_DOWN_DELAY_SEC = 2;
+                                SWSS_LOG_NOTICE("Port %s: waiting %u s after admin down before applying serdes",
+                                                p.m_alias.c_str(), SERDES_ADMIN_DOWN_DELAY_SEC);
+                                std::this_thread::sleep_for(std::chrono::seconds(SERDES_ADMIN_DOWN_DELAY_SEC));
                         }
 
                         if (setPortSerdesAttribute(p.m_port_id, gSwitchId, serdes_attr))
